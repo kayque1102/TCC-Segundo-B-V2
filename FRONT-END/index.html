@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabSchedule — Agendamento de Laboratórios</title>
+<style>
+  :root{
+    --azul:#1d4ed8; --azul-claro:#2563eb; --azul-escuro:#1e3a8a;
+    --fundo:#f1f5f9; --texto:#0f172a; --suave:#64748b; --borda:#e2e8f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--fundo);color:var(--texto)}
+  .oculto{display:none!important}
+
+  /* ---------- LOGIN ---------- */
+  #telaLogin{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr}
+  .lado-azul{background:linear-gradient(160deg,var(--azul-escuro),var(--azul-claro));color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:space-between}
+  .marca{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700}
+  .logo{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:22px}
+  .boas-vindas small{letter-spacing:.15em;font-weight:700;font-size:13px;opacity:.9}
+  .boas-vindas h1{font-size:46px;line-height:1.1;margin:14px 0 18px}
+  .boas-vindas p{font-size:18px;line-height:1.5;max-width:460px;opacity:.9;margin:0}
+  .lado-form{background:#fff;display:flex;align-items:center;justify-content:center;padding:40px}
+  .form-caixa{width:100%;max-width:400px}
+  .form-caixa .logo{background:#eff6ff;margin-bottom:24px}
+  .form-caixa h2{font-size:30px;margin:0 0 6px}
+  .form-caixa .sub{color:var(--suave);margin:0 0 26px}
+  label{display:block;font-size:14px;font-weight:600;margin:16px 0 6px}
+  .campo{position:relative}
+  .campo span{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px}
+  .campo input{padding-left:42px}
+  input,select{width:100%;padding:13px 14px;border:1px solid var(--borda);border-radius:12px;font-size:15px;font-family:inherit;background:#f8fafc}
+  input:focus,select:focus{outline:2px solid var(--azul-claro);background:#fff}
+  .btn{width:100%;padding:14px;border:0;border-radius:12px;background:var(--azul);color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-top:22px}
+  .btn:hover{background:var(--azul-claro)}
+  .dica{margin-top:22px;padding:14px;background:#f8fafc;border-radius:12px;font-size:13px;color:var(--suave)}
+  .msg{margin-top:14px;padding:11px 13px;border-radius:10px;font-size:14px;display:none}
+  .msg.ok{background:#dcfce7;color:#166534;display:block}
+  .msg.erro{background:#fee2e2;color:#991b1b;display:block}
+  @media(max-width:800px){
+    #telaLogin{grid-template-columns:1fr}
+    .lado-azul{padding:28px;gap:24px}
+    .boas-vindas h1{font-size:32px}
+  }
+
+  /* ---------- APLICATIVO ---------- */
+  header{background:linear-gradient(90deg,var(--azul-escuro),var(--azul-claro));color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+  header .logo{width:38px;height:38px;font-size:19px}
+  header .direita{display:flex;align-items:center;gap:14px;font-size:14px}
+  header a{color:#dbeafe;text-decoration:none;font-weight:600}
+  .btn-sair{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:14px}
+  main{max-width:960px;margin:24px auto;padding:0 16px}
+  .card{background:#fff;border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .card h2{margin:0 0 4px;font-size:19px}
+  .card .sub{color:var(--suave);font-size:14px;margin:0 0 8px}
+  .grade{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  @media(max-width:600px){.grade{grid-template-columns:1fr}}
+  .card .btn{width:auto;padding:12px 24px}
+  .tabela{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{color:var(--suave);font-weight:600;font-size:13px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--borda)}
+  .btn-cancelar{background:#fee2e2;color:#b91c1c;border:0;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+  .vazio{color:var(--suave);padding:12px 8px}
+  .estoque-grade{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+  @media(max-width:700px){.estoque-grade{grid-template-columns:1fr}}
+  .lab{border:1px solid var(--borda);border-radius:14px;padding:16px}
+  .lab h3{margin:0 0 12px;font-size:16px}
+  .numeros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:12px}
+  .numeros div{background:#f8fafc;border-radius:10px;padding:10px 4px}
+  .numeros b{display:block;font-size:26px}
+  .numeros small{color:var(--suave);font-size:12px}
+  .verde b{color:#15803d}.vermelho b{color:#b91c1c}
+  .lab .linha{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .lab .btn{width:100%;margin-top:12px;padding:10px}
+  .lab .rodape{margin-top:10px;font-size:12px;color:var(--suave)}
+</style>
+</head>
+<body>
+
+<!-- ============ TELA DE LOGIN ============ -->
+<div id="telaLogin" class="oculto">
+  <div class="lado-azul">
+    <div class="marca"><div class="logo">💻</div> LabSchedule</div>
+    <div class="boas-vindas">
+      <small>BEM-VINDO</small>
+      <h1>Agendamento de Laboratórios</h1>
+      <p>Organize suas aulas, reserve computadores e acompanhe seus agendamentos em um só lugar.</p>
+    </div>
+    <div></div>
+  </div>
+  <div class="lado-form">
+    <div class="form-caixa">
+      <div class="logo">🧑‍🏫</div>
+      <h2>Login do Professor</h2>
+      <p class="sub">Entre com sua conta para continuar</p>
+
+      <label for="lEmail">Usuário</label>
+      <div class="campo"><span>👤</span><input id="lEmail" autocomplete="username" placeholder="Digite seu usuário (e-mail)"></div>
+
+      <label for="lSenha">Senha</label>
+      <div class="campo"><span>🔒</span><input id="lSenha" type="password" autocomplete="current-password" placeholder="Digite sua senha"></div>
+
+      <button class="btn" id="btnLogin">Entrar →</button>
+      <div id="msgLogin" class="msg"></div>
+      <div class="dica">Use o e-mail e a senha cadastrados pelo administrador da escola.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APLICATIVO ============ -->
+<div id="painel" class="oculto">
+  <header>
+    <div class="marca" style="font-size:19px"><div class="logo">💻</div> LabSchedule</div>
+    <div class="direita">
+      <a id="linkAdmin" href="admin.html" class="oculto">Administração</a>
+      <span id="nomeUsuario"></span>
+      <button class="btn-sair" id="btnSair">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Nova reserva</h2>
+      <p class="sub">Escolha o dia e o horário da sua aula.</p>
+      <div class="grade">
+        <div><label for="rSala">Laboratório</label><select id="rSala"></select></div>
+        <div><label for="rData">Data</label><input id="rData" type="date"></div>
+        <div><label for="rInicio">Hora de início</label><input id="rInicio" type="time"></div>
+        <div><label for="rFim">Hora de fim</label><input id="rFim" type="time"></div>
+        <div><label for="rTurma">Turma</label><input id="rTurma" placeholder="Ex.: 2º B"></div>
+        <div><label for="rObs">Observação</label><input id="rObs" placeholder="Opcional"></div>
+      </div>
+      <button class="btn" id="btnReservar">Reservar</button>
+      <div id="msgReserva" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <h2>Estoque de computadores</h2>
+      <p class="sub">Computadores carregados e descarregados em cada laboratório. Qualquer professor pode atualizar, e o sistema registra quem fez.</p>
+      <div id="estoque" class="estoque-grade"></div>
+      <div id="msgEstoque" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <h2>Horários reservados em <span id="dataConsulta"></span></h2>
+      <p class="sub">Veja o que já está ocupado antes de escolher.</p>
+      <div class="tabela">
+        <table>
+          <thead><tr><th>Horário</th><th>Laboratório</th><th>Professor</th><th>Turma</th></tr></thead>
+          <tbody id="listaDia"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Meus agendamentos</h2>
+      <p class="sub">Suas reservas ativas.</p>
+      <div class="tabela">
+        <table>
+          <thead><tr><th>Data</th><th>Horário</th><th>Laboratório</th><th>Turma</th><th></th></tr></thead>
+          <tbody id="listaMinhas"></tbody>
+        </table>
+      </div>
+      <div id="msgMinhas" class="msg"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let token = localStorage.getItem('token');
+let usuario = null;
+try { usuario = JSON.parse(localStorage.getItem('usuario')); } catch { usuario = null; }
+
+function aviso(el, texto, tipo) { el.textContent = texto; el.className = 'msg ' + tipo; }
+
+async function api(caminho, opcoes = {}) {
+  const resp = await fetch('/api' + caminho, {
+    ...opcoes,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }
+  });
+  const dados = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(dados.erro || 'Erro inesperado.');
+  return dados;
+}
+
+function formatarData(iso) { const [a, m, d] = iso.split('-'); return d + '/' + m + '/' + a; }
+
+function linhaVazia(corpo, colunas, texto) {
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = colunas; td.className = 'vazio'; td.textContent = texto;
+  tr.appendChild(td); corpo.appendChild(tr);
+}
+
+function mostrar() {
+  const logado = !!(token && usuario);
+  $('telaLogin').classList.toggle('oculto', logado);
+  $('painel').classList.toggle('oculto', !logado);
+  if (!logado) return;
+  $('nomeUsuario').textContent = usuario.nome;
+  $('linkAdmin').classList.toggle('oculto', usuario.tipo !== 'admin');
+  const hoje = new Date();
+  hoje.setMinutes(hoje.getMinutes() - hoje.getTimezoneOffset());
+  if (!$('rData').value) $('rData').value = hoje.toISOString().slice(0, 10);
+  carregarSalas(); carregarDia(); carregarMinhas(); carregarEstoque();
+}
+
+function sessaoExpirou(e) {
+  if (/Sessão/.test(e.message)) { $('btnSair').click(); return true; }
+  return false;
+}
+
+async function entrar() {
+  try {
+    const r = await api('/login', { method: 'POST', body: JSON.stringify({ email: $('lEmail').value, senha: $('lSenha').value }) });
+    token = r.token; usuario = r.usuario;
+    localStorage.setItem('token', token);
+    localStorage.setItem('usuario', JSON.stringify(usuario));
+    $('lSenha').value = '';
+    mostrar();
+  } catch (e) { aviso($('msgLogin'), e.message, 'erro'); }
+}
+$('btnLogin').onclick = entrar;
+$('lSenha').onkeydown = (ev) => { if (ev.key === 'Enter') entrar(); };
+
+$('btnSair').onclick = () => {
+  localStorage.removeItem('token'); localStorage.removeItem('usuario');
+  token = null; usuario = null; mostrar();
+};
+
+async function carregarSalas() {
+  try {
+    const salas = await api('/salas');
+    const sel = $('rSala'); sel.innerHTML = '';
+    salas.forEach((s) => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.nome; sel.appendChild(o); });
+  } catch (e) { sessaoExpirou(e); }
+}
+
+async function carregarDia() {
+  const data = $('rData').value;
+  if (!data) return;
+  $('dataConsulta').textContent = formatarData(data);
+  try {
+    const lista = await api('/reservas?data=' + data);
+    const corpo = $('listaDia'); corpo.innerHTML = '';
+    if (!lista.length) return linhaVazia(corpo, 4, 'Nenhuma reserva neste dia. Tudo livre!');
+    lista.forEach((r) => {
+      const tr = document.createElement('tr');
+      [r.hora_inicio + ' – ' + r.hora_fim, r.sala, r.professor, r.turma || '-'].forEach((t) => {
+        const td = document.createElement('td'); td.textContent = t; tr.appendChild(td);
+      });
+      corpo.appendChild(tr);
+    });
+  } catch (e) { sessaoExpirou(e); }
+}
+
+async function carregarMinhas() {
+  try {
+    const lista = await api('/reservas/minhas');
+    const corpo = $('listaMinhas'); corpo.innerHTML = '';
+    if (!lista.length) return linhaVazia(corpo, 5, 'Você ainda não tem reservas.');
+    lista.forEach((r) => {
+      const tr = document.createElement('tr');
+      [formatarData(r.data), r.hora_inicio + ' – ' + r.hora_fim, r.sala, r.turma || '-'].forEach((t) => {
+        const td = document.createElement('td'); td.textContent = t; tr.appendChild(td);
+      });
+      const tdAcao = document.createElement('td');
+      const b = document.createElement('button');
+      b.className = 'btn-cancelar'; b.textContent = 'Cancelar';
+      b.onclick = () => cancelar(r);
+      tdAcao.appendChild(b); tr.appendChild(tdAcao);
+      corpo.appendChild(tr);
+    });
+  } catch (e) { sessaoExpirou(e); }
+}
+
+async function cancelar(r) {
+  if (!confirm('Cancelar a reserva de ' + formatarData(r.data) + ' (' + r.hora_inicio + ' – ' + r.hora_fim + ')?')) return;
+  try {
+    await api('/reservas/' + r.id, { method: 'DELETE' });
+    aviso($('msgMinhas'), 'Reserva cancelada.', 'ok');
+    carregarMinhas(); carregarDia();
+  } catch (e) { if (!sessaoExpirou(e)) aviso($('msgMinhas'), e.message, 'erro'); }
+}
+
+$('btnReservar').onclick = async () => {
+  try {
+    const r = await api('/reservas', {
+      method: 'POST',
+      body: JSON.stringify({
+        sala_id: Number($('rSala').value),
+        data: $('rData').value,
+        hora_inicio: $('rInicio').value,
+        hora_fim: $('rFim').value,
+        turma: $('rTurma').value.trim(),
+        observacao: $('rObs').value.trim()
+      })
+    });
+    aviso($('msgReserva'), r.mensagem, 'ok');
+    carregarDia(); carregarMinhas();
+  } catch (e) { if (!sessaoExpirou(e)) aviso($('msgReserva'), e.message, 'erro'); }
+};
+
+function criar(tag, classe, texto) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+function dataHora(sql) {
+  if (!sql) return '';
+  return new Date(sql.replace(' ', 'T') + 'Z').toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+async function carregarEstoque() {
+  try {
+    const labs = await api('/estoque');
+    const area = $('estoque'); area.innerHTML = '';
+    labs.forEach((l) => {
+      const caixa = criar('div', 'lab');
+      caixa.appendChild(criar('h3', '', l.nome));
+
+      const nums = criar('div', 'numeros');
+      [['verde', l.carregados, 'Carregados'], ['vermelho', l.descarregados, 'Descarregados'], ['', l.carregados + l.descarregados, 'Total de ' + l.capacidade]]
+        .forEach(([cls, n, rotulo]) => {
+          const d = criar('div', cls);
+          d.appendChild(criar('b', '', String(n)));
+          d.appendChild(criar('small', '', rotulo));
+          nums.appendChild(d);
+        });
+      caixa.appendChild(nums);
+
+      const linha = criar('div', 'linha');
+      const campos = {};
+      [['carregados', 'Carregados', l.carregados], ['descarregados', 'Descarregados', l.descarregados]].forEach(([chave, rotulo, valor]) => {
+        const d = criar('div');
+        d.appendChild(criar('label', '', rotulo));
+        const i = document.createElement('input');
+        i.type = 'number'; i.min = '0'; i.max = String(l.capacidade); i.value = valor;
+        campos[chave] = i; d.appendChild(i); linha.appendChild(d);
+      });
+      caixa.appendChild(linha);
+
+      const b = criar('button', 'btn', 'Atualizar estoque');
+      b.onclick = () => atualizarEstoque(l.sala_id, campos.carregados.value, campos.descarregados.value);
+      caixa.appendChild(b);
+
+      caixa.appendChild(criar('div', 'rodape',
+        l.atualizado_em ? 'Última atualização: ' + (l.atualizado_por || 'usuário removido') + ' em ' + dataHora(l.atualizado_em)
+                        : 'Ainda não foi informado.'));
+      area.appendChild(caixa);
+    });
+  } catch (e) { sessaoExpirou(e); }
+}
+
+async function atualizarEstoque(salaId, carregados, descarregados) {
+  try {
+    const r = await api('/estoque/' + salaId, {
+      method: 'PUT',
+      body: JSON.stringify({ carregados: Number(carregados), descarregados: Number(descarregados) })
+    });
+    aviso($('msgEstoque'), r.mensagem, 'ok');
+    carregarEstoque();
+  } catch (e) { if (!sessaoExpirou(e)) aviso($('msgEstoque'), e.message, 'erro'); }
+}
+
+$('rData').onchange = carregarDia;
+mostrar();
+</script>
+</body>
+</html>

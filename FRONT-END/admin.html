@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administração — Reserva da Sala de Computadores</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:system-ui,Arial,sans-serif;margin:0;background:#f3f4f6;color:#1f2937}
+  header{background:#1e3a8a;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  header h1{font-size:18px;margin:0}
+  main{max-width:900px;margin:20px auto;padding:0 16px}
+  .card{background:#fff;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  h2{margin-top:0;font-size:17px}
+  label{display:block;font-size:14px;margin:10px 0 4px}
+  input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:6px;font-size:15px}
+  button{padding:10px 16px;border:0;border-radius:6px;background:#2563eb;color:#fff;font-size:15px;cursor:pointer;margin-top:14px}
+  button.sair{background:#475569;margin:0}
+  button.remover{background:#dc2626;margin:0;padding:6px 12px;font-size:13px}
+  .grade{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  @media(max-width:600px){.grade{grid-template-columns:1fr}}
+  .tabela{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid #e5e7eb}
+  .msg{margin-top:12px;padding:10px;border-radius:6px;font-size:14px;display:none}
+  .msg.ok{background:#dcfce7;color:#166534;display:block}
+  .msg.erro{background:#fee2e2;color:#991b1b;display:block}
+  #telaLogin{max-width:380px;margin:60px auto}
+  .oculto{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN (aparece se não houver administrador logado) -->
+<div id="telaLogin" class="card oculto">
+  <h2>Entrar como administrador</h2>
+  <label for="lEmail">E-mail</label>
+  <input id="lEmail" type="email" autocomplete="username">
+  <label for="lSenha">Senha</label>
+  <input id="lSenha" type="password" autocomplete="current-password">
+  <button id="btnLogin">Entrar</button>
+  <div id="msgLogin" class="msg"></div>
+</div>
+
+<!-- PAINEL -->
+<div id="painel" class="oculto">
+  <header>
+    <h1>Administração — quem pode entrar</h1>
+    <div><span id="nomeAdmin"></span> <button class="sair" id="btnSair">Sair</button></div>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Cadastrar usuário</h2>
+      <div class="grade">
+        <div><label for="nNome">Nome</label><input id="nNome"></div>
+        <div><label for="nEmail">E-mail institucional</label><input id="nEmail" type="email"></div>
+        <div><label for="nSenha">Senha inicial (mín. 6 caracteres)</label><input id="nSenha" type="password" autocomplete="new-password"></div>
+        <div><label for="nTipo">Tipo</label>
+          <select id="nTipo"><option value="professor">Professor</option><option value="admin">Administrador</option></select>
+        </div>
+      </div>
+      <button id="btnCadastrar">Cadastrar</button>
+      <div id="msgCadastro" class="msg"></div>
+    </section>
+
+    <section class="card">
+      <h2>Usuários com acesso</h2>
+      <div class="tabela">
+        <table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th></th></tr></thead>
+          <tbody id="listaUsuarios"></tbody>
+        </table>
+      </div>
+      <div id="msgLista" class="msg"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let token = localStorage.getItem('token');
+let usuario = null;
+try { usuario = JSON.parse(localStorage.getItem('usuario')); } catch { usuario = null; }
+
+function aviso(el, texto, tipo) {
+  el.textContent = texto;
+  el.className = 'msg ' + tipo;
+}
+
+async function api(caminho, opcoes = {}) {
+  const resp = await fetch('/api' + caminho, {
+    ...opcoes,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {})
+    }
+  });
+  const dados = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(dados.erro || 'Erro inesperado.');
+  return dados;
+}
+
+function mostrar() {
+  const ehAdmin = token && usuario && usuario.tipo === 'admin';
+  $('telaLogin').classList.toggle('oculto', !!ehAdmin);
+  $('painel').classList.toggle('oculto', !ehAdmin);
+  if (ehAdmin) {
+    $('nomeAdmin').textContent = usuario.nome;
+    carregarUsuarios();
+  }
+}
+
+$('btnLogin').onclick = async () => {
+  try {
+    const r = await api('/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: $('lEmail').value, senha: $('lSenha').value })
+    });
+    if (r.usuario.tipo !== 'admin') return aviso($('msgLogin'), 'Esta área é só para administradores.', 'erro');
+    token = r.token; usuario = r.usuario;
+    localStorage.setItem('token', token);
+    localStorage.setItem('usuario', JSON.stringify(usuario));
+    mostrar();
+  } catch (e) { aviso($('msgLogin'), e.message, 'erro'); }
+};
+
+$('btnSair').onclick = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  token = null; usuario = null;
+  mostrar();
+};
+
+async function carregarUsuarios() {
+  try {
+    const lista = await api('/usuarios');
+    const corpo = $('listaUsuarios');
+    corpo.innerHTML = '';
+    lista.forEach((u) => {
+      const tr = document.createElement('tr');
+      [u.nome, u.email, u.tipo === 'admin' ? 'Administrador' : 'Professor'].forEach((t) => {
+        const td = document.createElement('td');
+        td.textContent = t;
+        tr.appendChild(td);
+      });
+      const tdAcao = document.createElement('td');
+      if (u.id !== usuario.id) {
+        const b = document.createElement('button');
+        b.className = 'remover';
+        b.textContent = 'Remover';
+        b.onclick = () => remover(u);
+        tdAcao.appendChild(b);
+      }
+      tr.appendChild(tdAcao);
+      corpo.appendChild(tr);
+    });
+  } catch (e) {
+    if (/Sessão/.test(e.message)) { $('btnSair').click(); }
+    else aviso($('msgLista'), e.message, 'erro');
+  }
+}
+
+async function remover(u) {
+  if (!confirm('Remover ' + u.nome + '? As reservas dessa pessoa também serão apagadas.')) return;
+  try {
+    await api('/usuarios/' + u.id, { method: 'DELETE' });
+    aviso($('msgLista'), 'Usuário removido.', 'ok');
+    carregarUsuarios();
+  } catch (e) { aviso($('msgLista'), e.message, 'erro'); }
+}
+
+$('btnCadastrar').onclick = async () => {
+  try {
+    await api('/usuarios', {
+      method: 'POST',
+      body: JSON.stringify({
+        nome: $('nNome').value.trim(),
+        email: $('nEmail').value.trim(),
+        senha: $('nSenha').value,
+        tipo: $('nTipo').value
+      })
+    });
+    aviso($('msgCadastro'), 'Usuário cadastrado!', 'ok');
+    ['nNome', 'nEmail', 'nSenha'].forEach((id) => ($(id).value = ''));
+    carregarUsuarios();
+  } catch (e) { aviso($('msgCadastro'), e.message, 'erro'); }
+};
+
+mostrar();
+</script>
+</body>
+</html>
